@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Sports — Flow Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --surface: #0c1520;
+    --surface2: #111d2b;
+    --border: #1a2d40;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #e0eaf5;
+    --muted: #4a6580;
+    --up: #39ff14;
+    --down: #ff3860;
+    --mid: #ffcc00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 20% 10%, rgba(0,229,255,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,107,53,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(5,10,15,0.85);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--up);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(57,255,20,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(57,255,20,0); }
+  }
+
+  .last-update { color: var(--accent); }
+
+  /* CONTROLS */
+  .controls {
+    padding: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+
+  .sort-label {
+    margin-left: auto;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  select:hover, select:focus { border-color: var(--accent); }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    padding-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .stat-card:nth-child(2)::before { background: var(--accent2); }
+  .stat-card:nth-child(3)::before { background: var(--up); }
+  .stat-card:nth-child(4)::before { background: var(--mid); }
+
+  .stat-label {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+
+  /* MARKET CARDS */
+  .markets-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
+
+  .market-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    animation: slideIn 0.4s ease both;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .market-card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,229,255,0.08);
+  }
+
+  .market-card.hot { border-color: rgba(255,107,53,0.4); }
+  .market-card.hot::after {
+    content: '🔥 HOT';
+    position: absolute;
+    top: 12px; right: 12px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  .market-card.top-pick { border-color: rgba(57,255,20,0.4); }
+  .market-card.top-pick::after {
+    content: '⚡ BEST PICK';
+    position: absolute;
+    top: 12px; right: 12px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--up);
+    background: rgba(57,255,20,0.1);
+    border: 1px solid rgba(57,255,20,0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  .market-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+
+  .market-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    flex: 1;
+    padding-right: 80px;
+  }
+
+  .sport-tag {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  /* OUTCOMES */
+  .outcomes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+
+  .outcome-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .outcome-label {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    width: 120px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .outcome-bar-wrap {
+    flex: 1;
+    height: 20px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .outcome-bar {
+    height: 100%;
+    border-radius: 4px;
+    position: relative;
+    transition: width 1s cubic-bezier(0.23,1,0.32,1);
+    display: flex;
+    align-items: center;
+  }
+
+  .outcome-bar.leader { background: linear-gradient(90deg, rgba(57,255,20,0.6), rgba(57,255,20,0.3)); }
+  .outcome-bar.mid { background: linear-gradient(90deg, rgba(0,229,255,0.4), rgba(0,229,255,0.2)); }
+  .outcome-bar.low { background: linear-gradient(90deg, rgba(255,107,53,0.3), rgba(255,107,53,0.1)); }
+
+  .outcome-pct {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    width: 42px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .outcome-pct.leader { color: var(--up); }
+  .outcome-pct.mid { color: var(--accent); }
+  .outcome-pct.low { color: var(--muted); }
+
+  /* FLOW METRICS */
+  .flow-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .flow-item { text-align: center; }
+
+  .flow-label {
+    font-size: 9px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+
+  .flow-value {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+  }
+
+  .flow-value.volume { color: var(--accent); }
+  .flow-value.confidence { color: var(--up); }
+  .flow-value.spread { color: var(--mid); }
+
+  /* FLOW INDICATOR */
+  .flow-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .flow-arrow { font-size: 14px; }
+  .flow-arrow.up { color: var(--up); }
+  .flow-arrow.down { color: var(--down); }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 0;
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: blink 1.5s ease infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(255,56,96,0.08);
+    border: 1px solid rgba(255,56,96,0.3);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--down);
+  }
+
+  .error-box .retry-btn {
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid var(--down);
+    color: var(--down);
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+
+  .retry-btn:hover { background: rgba(255,56,96,0.1); }
+
+  /* SCORE BADGE */
+  .score-badge {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 4px;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .score-badge.s-high { background: var(--up); }
+  .score-badge.s-mid { background: var(--mid); }
+  .score-badge.s-low { background: var(--muted); }
+
+  .empty { text-align: center; padding: 60px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 12px; }
+
+  @media (max-width: 600px) {
+    .flow-metrics { grid-template-columns: repeat(2, 1fr); }
+    .outcome-label { width: 80px; font-size: 10px; }
+    .market-title { padding-right: 0; font-size: 13px; }
+    .status-bar { font-size: 10px; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">📊</div>
+        <div class="logo-text">POLY<span>FLOW</span></div>
+      </div>
+      <div class="status-bar">
+        <span><span class="live-dot"></span>LIVE</span>
+        <span>Polymarket API</span>
+        <span class="last-update" id="lastUpdate">—</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <button class="filter-btn active" data-sport="all">Todos</button>
+    <button class="filter-btn" data-sport="soccer">⚽ Fútbol</button>
+    <button class="filter-btn" data-sport="basketball">🏀 Basketball</button>
+    <button class="filter-btn" data-sport="baseball">⚾ Baseball</button>
+    <button class="filter-btn" data-sport="tennis">🎾 Tenis</button>
+    <button class="filter-btn" data-sport="mma">🥊 MMA</button>
+    <span class="sort-label">Ordenar:</span>
+    <select id="sortSelect">
+      <option value="volume">Volumen</option>
+      <option value="confidence">Confianza</option>
+      <option value="spread">Spread bajo</option>
+    </select>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card">
+      <div class="stat-label">Mercados activos</div>
+      <div class="stat-value" id="statMarkets">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Vol. total</div>
+      <div class="stat-value" id="statVolume">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Mejor pick</div>
+      <div class="stat-value" id="statBest">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Spread promedio</div>
+      <div class="stat-value" id="statSpread">—</div>
+    </div>
+  </div>
+
+  <div class="markets-list" id="marketsList">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Cargando mercados deportivos...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const GAMMA_API = 'https://gamma-api.polymarket.com';
+const REFRESH_INTERVAL = 60000; // 1 min
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let allMarkets = [];
+let currentSport = 'all';
+let currentSort = 'volume';
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = n => {
+  if (n === null || n === undefined) return '—';
+  if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`;
+  return `$${n.toFixed(0)}`;
+};
+
+const pct = n => n != null ? `${(n * 100).toFixed(1)}%` : '—';
+
+function detectSport(title = '', tags = []) {
+  const t = (title + ' ' + tags.join(' ')).toLowerCase();
+  if (t.includes('soccer') || t.includes('football') || t.includes('futbol') || t.includes('fútbol') ||
+      t.includes('ucl') || t.includes('mls') || t.includes('bundesliga') || t.includes('laliga') ||
+      t.includes('serie a') || t.includes('premier') || t.includes('ligue') || t.includes('copa') ||
+      t.includes('champions') || t.includes('psg') || t.includes('real madrid') || t.includes('barcelona') ||
+      t.includes('atletico') || t.includes('arsenal') || t.includes('manchester') || t.includes('liverpool') ||
+      t.includes('match') || t.includes('vs.')) return 'soccer';
+  if (t.includes('nba') || t.includes('basketball') || t.includes('lakers') || t.includes('celtics')) return 'basketball';
+  if (t.includes('mlb') || t.includes('baseball')) return 'baseball';
+  if (t.includes('tennis') || t.includes('atp') || t.includes('wta') || t.includes('wimbledon')) return 'tennis';
+  if (t.includes('ufc') || t.includes('mma') || t.includes('boxing') || t.includes('fight')) return 'mma';
+  if (t.includes('nfl') || t.includes('nhl') || t.includes('hockey')) return 'hockey';
+  return 'other';
+}
+
+function calcConfidence(outcomes) {
+  if (!outcomes || outcomes.length === 0) return 0;
+  const max = Math.max(...outcomes.map(o => parseFloat(o.price || 0)));
+  return max; // 0-1 range, higher = clearer leader
+}
+
+function calcSpread(outcomes) {
+  if (!outcomes || outcomes.length < 2) return 0;
+  const prices = outcomes.map(o => parseFloat(o.price || 0)).sort((a,b) => b - a);
+  return prices[0] - prices[1];
+}
+
+function flowDirection(market) {
+  // Simulated flow based on price movement indicator
+  // In real scenario: compare current vs historical midpoint
+  const conf = calcConfidence(market._outcomes);
+  if (conf > 0.75) return 'up';
+  if (conf < 0.45) return 'down';
+  return 'neutral';
+}
+
+// ─── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchSportsMarkets() {
+  const url = `${GAMMA_API}/events?tag=sports&limit=60&active=true&closed=false`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`API error: ${r.status}`);
+  const data = await r.json();
+  return data;
+}
+
+async function fetchMoreMarkets() {
+  // Fetch additional sport-specific markets to enrich results
+  const tags = ['soccer', 'basketball', 'baseball', 'tennis', 'mma', 'nba', 'nfl', 'ucl', 'nhl'];
+  const results = [];
+  for (const tag of tags.slice(0, 4)) {
+    try {
+      const r = await fetch(`${GAMMA_API}/events?tag=${tag}&limit=20&active=true&closed=false`);
+      if (r.ok) {
+        const d = await r.json();
+        results.push(...(d || []));
+      }
+    } catch {}
+  }
+  return results;
+}
+
+function parseEvents(events) {
+  const markets = [];
+  const seen = new Set();
+  for (const ev of events) {
+    if (seen.has(ev.id)) continue;
+    seen.add(ev.id);
+
+    const mList = ev.markets || [];
+    // Aggregate outcomes across sub-markets for display
+    const outcomes = [];
+    let totalVol = parseFloat(ev.volume || ev.volumeNum || 0);
+    
+    for (const m of mList) {
+      for (const t of (m.tokens || m.outcomes || [])) {
+        outcomes.push({
+          name: t.outcome || t.name || 'Outcome',
+          price: parseFloat(t.price || 0),
+          winner: t.winner || false
+        });
+      }
+    }
+
+    // Fallback: parse outcomes from event directly
+    if (outcomes.length === 0 && ev.tokens) {
+      for (const t of ev.tokens) {
+        outcomes.push({ name: t.outcome || t.name || '—', price: parseFloat(t.price || 0) });
+      }
+    }
+
+    if (outcomes.length === 0) continue;
+
+    const title = ev.title || ev.question || 'Mercado deportivo';
+    const tags = (ev.tags || []).map(t => t.label || t);
+    const sport = detectSport(title, tags);
+    const volume = totalVol || parseFloat(ev.volume24hr || 0);
+
+    markets.push({
+      id: ev.id,
+      title,
+      sport,
+      volume,
+      _outcomes: outcomes,
+      slug: ev.slug,
+      endDate: ev.endDate,
+    });
+  }
+  return markets;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderOutcomes(outcomes) {
+  const sorted = [...outcomes].sort((a,b) => b.price - a.price).slice(0, 4);
+  const max = sorted[0]?.price || 1;
+
+  return sorted.map((o, i) => {
+    const cls = i === 0 ? 'leader' : i === 1 ? 'mid' : 'low';
+    const barWidth = max > 0 ? (o.price / max) * 100 : 0;
+    const name = (o.name || '—').substring(0, 18);
+    return `
+      <div class="outcome-row">
+        <div class="outcome-label">${name}</div>
+        <div class="outcome-bar-wrap">
+          <div class="outcome-bar ${cls}" style="width:${barWidth}%"></div>
+        </div>
+        <div class="outcome-pct ${cls}">${(o.price*100).toFixed(0)}%</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCard(m, idx) {
+  const conf = calcConfidence(m._outcomes);
+  const spread = calcSpread(m._outcomes);
+  const flow = flowDirection(m);
+
+  let tag = '';
+  let scoreClass = '';
+  if (conf >= 0.7 && m.volume > 5000) { tag = 'top-pick'; scoreClass = 's-high'; }
+  else if (m.volume > 50000) { tag = 'hot'; scoreClass = 's-mid'; }
+  else { scoreClass = 's-low'; }
+
+  const flowIcon = flow === 'up' ? '▲' : flow === 'down' ? '▼' : '→';
+  const flowClass = flow === 'up' ? 'up' : flow === 'down' ? 'down' : '';
+
+  const sportEmoji = {
+    soccer: '⚽', basketball: '🏀', baseball: '⚾', tennis: '🎾',
+    mma: '🥊', hockey: '🏒', other: '🏆'
+  };
+
+  return `
+    <div class="market-card ${tag}" style="animation-delay:${idx*0.05}s"
+         onclick="window.open('https://polymarket.com/event/${m.slug}','_blank')">
+      <div class="score-badge ${scoreClass}"></div>
+      <div class="market-header">
+        <div>
+          <div class="sport-tag">${sportEmoji[m.sport] || '🏆'} ${m.sport.toUpperCase()}</div>
+          <div class="market-title">${m.title}</div>
+        </div>
+      </div>
+      <div class="outcomes">${renderOutcomes(m._outcomes)}</div>
+      <div class="flow-metrics">
+        <div class="flow-item">
+          <div class="flow-label">Volumen</div>
+          <div class="flow-value volume">${fmt(m.volume)}</div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-label">Confianza</div>
+          <div class="flow-value confidence">${(conf*100).toFixed(0)}%</div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-label">Spread</div>
+          <div class="flow-value spread">${(spread*100).toFixed(0)}%</div>
+        </div>
+      </div>
+      <div class="flow-indicator">
+        <span class="flow-arrow ${flowClass}">${flowIcon}</span>
+        <span>Flujo de dinero: ${flow === 'up' ? 'Hacia el líder' : flow === 'down' ? 'Mercado dividido' : 'Equilibrado'}</span>
+      </div>
+    </div>
+  `;
+}
+
+function getFiltered() {
+  return allMarkets
+    .filter(m => currentSport === 'all' || m.sport === currentSport)
+    .sort((a, b) => {
+      if (currentSort === 'volume') return b.volume - a.volume;
+      if (currentSort === 'confidence') return calcConfidence(b._outcomes) - calcConfidence(a._outcomes);
+      if (currentSort === 'spread') return calcSpread(a._outcomes) - calcSpread(b._outcomes);
+      return 0;
+    });
+}
+
+function renderStats(markets) {
+  const totalVol = markets.reduce((s, m) => s + m.volume, 0);
+  const avgSpread = markets.length
+    ? markets.reduce((s, m) => s + calcSpread(m._outcomes), 0) / markets.length * 100
+    : 0;
+  const best = [...markets].sort((a,b) => calcConfidence(b._outcomes) - calcConfidence(a._outcomes))[0];
+
+  document.getElementById('statMarkets').textContent = markets.length;
+  document.getElementById('statVolume').textContent = fmt(totalVol);
+  document.getElementById('statBest').textContent = best
+    ? `${(calcConfidence(best._outcomes)*100).toFixed(0)}%`
+    : '—';
+  document.getElementById('statSpread').textContent = `${avgSpread.toFixed(0)}%`;
+}
+
+function render() {
+  const filtered = getFiltered();
+  const list = document.getElementById('marketsList');
+
+  renderStats(filtered);
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">No hay mercados para este filtro</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map((m, i) => renderCard(m, i)).join('');
+}
+
+// ─── LOAD ─────────────────────────────────────────────────────────────────────
+async function loadMarkets() {
+  document.getElementById('marketsList').innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Conectando con Polymarket...</div>
+    </div>`;
+
+  try {
+    const [main, extra] = await Promise.allSettled([
+      fetchSportsMarkets(),
+      fetchMoreMarkets()
+    ]);
+
+    const mainData = main.status === 'fulfilled' ? (main.value || []) : [];
+    const extraData = extra.status === 'fulfilled' ? (extra.value || []) : [];
+    const combined = [...mainData, ...extraData];
+
+    allMarkets = parseEvents(combined).filter(m => m._outcomes.length > 0);
+
+    // Update timestamp
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+      now.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    render();
+
+  } catch (err) {
+    document.getElementById('marketsList').innerHTML = `
+      <div class="error-box">
+        ⚠️ No se pudo conectar con la API de Polymarket<br><br>
+        <small>${err.message}</small>
+        <br>
+        <button class="retry-btn" onclick="loadMarkets()">↻ Reintentar</button>
+      </div>`;
+    console.error(err);
+  }
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSport = btn.dataset.sport;
+    render();
+  });
+});
+
+document.getElementById('sortSelect').addEventListener('change', e => {
+  currentSort = e.target.value;
+  render();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadMarkets();
+setInterval(loadMarkets, REFRESH_INTERVAL);
+</script>
+</body>
+</html>
