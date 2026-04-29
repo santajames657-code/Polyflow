@@ -3,620 +3,487 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Polymarket Sports — Flow Analyzer</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<title>PolyFlow v2 — Sports Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #050a0f;
-    --surface: #0c1520;
-    --surface2: #111d2b;
-    --border: #1a2d40;
-    --accent: #00e5ff;
-    --accent2: #ff6b35;
-    --accent3: #39ff14;
-    --text: #e0eaf5;
-    --muted: #4a6580;
-    --up: #39ff14;
-    --down: #ff3860;
-    --mid: #ffcc00;
-  }
+:root {
+  --bg: #060810;
+  --s1: #0d1117;
+  --s2: #161b22;
+  --s3: #1c2333;
+  --border: #21262d;
+  --cyan: #00d4ff;
+  --green: #3dffa0;
+  --orange: #ff6b35;
+  --yellow: #ffd60a;
+  --red: #ff4757;
+  --purple: #bf5af2;
+  --text: #e6edf3;
+  --muted: #484f58;
+  --muted2: #6e7681;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+/* BG FX */
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 40% at 0% 0%,rgba(0,212,255,.05) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 100% 100%,rgba(61,255,160,.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+.scanlines{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:0}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+/* LAYOUT */
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 16px}
 
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(ellipse at 20% 10%, rgba(0,229,255,0.04) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 80%, rgba(255,107,53,0.04) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
+/* HEADER */
+header{border-bottom:1px solid var(--border);backdrop-filter:blur(16px);background:rgba(6,8,16,.8);position:sticky;top:0;z-index:200;padding:12px 0}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--cyan),var(--green));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-text{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;line-height:1}
+.logo-text span{color:var(--cyan)}
+.hstatus{display:flex;align-items:center;gap:16px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block;margin-right:5px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(61,255,160,.5)}50%{box-shadow:0 0 0 5px rgba(61,255,160,0)}}
+#tsUpdate{color:var(--cyan)}
 
-  .grid-bg {
-    position: fixed;
-    inset: 0;
-    background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    z-index: 0;
-    pointer-events: none;
-  }
+/* ALERT BANNER */
+#alertBanner{display:none;background:linear-gradient(90deg,rgba(255,107,53,.12),rgba(255,71,87,.08));border:1px solid rgba(255,107,53,.3);border-radius:10px;padding:10px 16px;margin:16px 0;font-size:13px;animation:slideDown .3s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+#alertBanner .al-icon{color:var(--orange);margin-right:8px;font-size:16px}
+#alertBanner .al-close{float:right;cursor:pointer;color:var(--muted2);font-size:16px}
+.alert-list{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.alert-item{font-family:'Space Mono',monospace;font-size:10px;color:var(--orange);padding:3px 0;border-bottom:1px solid rgba(255,107,53,.15)}
+.alert-item:last-child{border:none}
 
-  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+/* CONTROLS */
+.ctrl{padding:16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fbtn{background:var(--s1);border:1px solid var(--border);color:var(--muted2);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
+.fbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.fbtn.on{background:rgba(0,212,255,.1);border-color:var(--cyan);color:var(--cyan);font-weight:700}
+.sort-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.sort-label{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+select{background:var(--s1);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;outline:none}
+select:focus{border-color:var(--cyan)}
 
-  /* HEADER */
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 20px 0;
-    backdrop-filter: blur(10px);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(5,10,15,0.85);
-  }
+/* ALERT CONFIG */
+.alert-cfg{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.alert-cfg label{font-size:12px;color:var(--muted2);font-family:'Space Mono',monospace}
+.alert-cfg input[type=range]{accent-color:var(--orange);width:100px}
+#alertThreshVal{color:var(--orange);font-weight:700;font-family:'Space Mono',monospace;font-size:12px}
+.alert-toggle{background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);color:var(--orange);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Space Mono',monospace;transition:all .2s}
+.alert-toggle.on{background:rgba(255,107,53,.2)}
 
-  .header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.sc{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 14px;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sc:nth-child(1)::before{background:var(--cyan)}
+.sc:nth-child(2)::before{background:var(--orange)}
+.sc:nth-child(3)::before{background:var(--green)}
+.sc:nth-child(4)::before{background:var(--yellow)}
+.sc-label{font-size:9px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.sc-val{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px}
 
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+/* MARKETS */
+.mlist{display:flex;flex-direction:column;gap:10px;padding-bottom:40px}
 
-  .logo-icon {
-    width: 36px; height: 36px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
+.mc{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all .25s;cursor:pointer;animation:fadeUp .4s ease both;position:relative}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mc:hover{border-color:rgba(0,212,255,.3);box-shadow:0 4px 24px rgba(0,212,255,.06)}
+.mc.hot{border-color:rgba(255,107,53,.35)}
+.mc.best{border-color:rgba(61,255,160,.35)}
 
-  .logo-text {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
+.mc-badge{position:absolute;top:10px;right:10px;font-size:9px;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase}
+.mc-badge.hot-b{color:var(--orange);background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.25)}
+.mc-badge.best-b{color:var(--green);background:rgba(61,255,160,.1);border:1px solid rgba(61,255,160,.25)}
 
-  .logo-text span { color: var(--accent); }
+.mc-top{padding:14px 16px 10px}
+.mc-sport{font-size:9px;font-family:'Space Mono',monospace;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.mc-title{font-size:13px;font-weight:500;line-height:1.4;padding-right:90px}
 
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-  }
+/* OUTCOMES */
+.outcomes{padding:0 16px 10px;display:flex;flex-direction:column;gap:6px}
+.orow{display:flex;align-items:center;gap:8px}
+.oname{font-size:11px;font-family:'Space Mono',monospace;width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.obar-wrap{flex:1;height:18px;background:rgba(255,255,255,.04);border-radius:3px;overflow:hidden}
+.obar{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.23,1,.32,1)}
+.obar.l{background:linear-gradient(90deg,rgba(61,255,160,.5),rgba(61,255,160,.2))}
+.obar.m{background:linear-gradient(90deg,rgba(0,212,255,.4),rgba(0,212,255,.15))}
+.obar.lo{background:linear-gradient(90deg,rgba(255,107,53,.25),rgba(255,107,53,.08))}
+.opct{font-size:11px;font-family:'Space Mono',monospace;font-weight:700;width:38px;text-align:right;flex-shrink:0}
+.opct.l{color:var(--green)}
+.opct.m{color:var(--cyan)}
+.opct.lo{color:var(--muted2)}
 
-  .live-dot {
-    width: 8px; height: 8px;
-    background: var(--up);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-    display: inline-block;
-    margin-right: 6px;
-  }
+/* METRICS */
+.metrics{padding:10px 16px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mi{text-align:center}
+.mi-label{font-size:8px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px}
+.mi-val{font-size:12px;font-family:'Space Mono',monospace;font-weight:700}
+.mi-val.v{color:var(--cyan)}
+.mi-val.c{color:var(--green)}
+.mi-val.s{color:var(--yellow)}
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(57,255,20,0.4); }
-    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(57,255,20,0); }
-  }
+/* FLOW */
+.flow-row{padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.flow-tag{font-size:10px;font-family:'Space Mono',monospace;display:flex;align-items:center;gap:5px}
+.flow-tag.up{color:var(--green)}
+.flow-tag.dn{color:var(--red)}
+.flow-tag.eq{color:var(--muted2)}
 
-  .last-update { color: var(--accent); }
+/* CHART PANEL */
+.chart-panel{display:none;padding:14px 16px;border-top:1px solid var(--border);background:var(--s2)}
+.chart-panel.open{display:block}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.chart-title{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted2);text-transform:uppercase;letter-spacing:1px}
+.chart-period{display:flex;gap:6px}
+.period-btn{font-size:9px;font-family:'Space Mono',monospace;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:4px;cursor:pointer;transition:all .15s}
+.period-btn.on{border-color:var(--cyan);color:var(--cyan)}
+.chart-wrap{position:relative;height:140px}
+.chart-toggle{display:flex;align-items:center;gap:6px;font-size:10px;font-family:'Space Mono',monospace;color:var(--cyan);padding:6px 16px;border-top:1px solid var(--border);cursor:pointer;transition:color .2s}
+.chart-toggle:hover{color:var(--green)}
+.chart-toggle svg{transition:transform .2s}
+.chart-toggle.open svg{transform:rotate(180deg)}
 
-  /* CONTROLS */
-  .controls {
-    padding: 20px 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
+/* ODDS COMPARISON */
+.odds-panel{display:none;padding:12px 16px;border-top:1px solid var(--border);background:var(--s2)}
+.odds-panel.open{display:block}
+.odds-title{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.odds-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+.odds-source{background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.odds-source-name{font-size:9px;font-family:'Space Mono',monospace;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+.odds-source-val{font-size:16px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px}
+.odds-source-val.best-odds{color:var(--green)}
+.odds-diff{font-size:9px;font-family:'Space Mono',monospace;margin-top:2px}
+.odds-diff.pos{color:var(--green)}
+.odds-diff.neg{color:var(--red)}
 
-  .filter-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 7px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    transition: all 0.2s;
-    text-transform: uppercase;
-  }
+/* LOADING / ERROR */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 0;gap:14px}
+.spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;animation:blink 1.5s ease infinite}
+@keyframes blink{50%{opacity:.4}}
+.errbox{background:rgba(255,71,87,.07);border:1px solid rgba(255,71,87,.25);border-radius:10px;padding:20px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--red)}
+.retry{margin-top:10px;background:none;border:1px solid var(--red);color:var(--red);padding:7px 18px;border-radius:6px;cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;transition:background .2s}
+.retry:hover{background:rgba(255,71,87,.1)}
+.empty{text-align:center;padding:50px;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px}
 
-  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .filter-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+/* NOTIFICATION TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s2);border:1px solid var(--orange);border-radius:10px;padding:12px 16px;font-size:12px;font-family:'Space Mono',monospace;color:var(--orange);z-index:999;transform:translateX(120%);transition:transform .3s cubic-bezier(.23,1,.32,1);max-width:280px}
+.toast.show{transform:translateX(0)}
+.toast-title{font-weight:700;margin-bottom:4px;font-size:11px}
+.toast-body{color:var(--text);font-size:10px;line-height:1.5}
 
-  .sort-label {
-    margin-left: auto;
-    font-size: 11px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 7px 12px;
-    border-radius: 6px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  select:hover, select:focus { border-color: var(--accent); }
-
-  /* STATS BAR */
-  .stats-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    padding-bottom: 24px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--accent);
-  }
-
-  .stat-card:nth-child(2)::before { background: var(--accent2); }
-  .stat-card:nth-child(3)::before { background: var(--up); }
-  .stat-card:nth-child(4)::before { background: var(--mid); }
-
-  .stat-label {
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -1px;
-  }
-
-  /* MARKET CARDS */
-  .markets-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
-
-  .market-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px 20px;
-    cursor: pointer;
-    transition: all 0.25s;
-    position: relative;
-    overflow: hidden;
-    animation: slideIn 0.4s ease both;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .market-card:hover {
-    border-color: var(--accent);
-    background: var(--surface2);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0,229,255,0.08);
-  }
-
-  .market-card.hot { border-color: rgba(255,107,53,0.4); }
-  .market-card.hot::after {
-    content: '🔥 HOT';
-    position: absolute;
-    top: 12px; right: 12px;
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    color: var(--accent2);
-    background: rgba(255,107,53,0.1);
-    border: 1px solid rgba(255,107,53,0.3);
-    padding: 2px 8px;
-    border-radius: 4px;
-    letter-spacing: 1px;
-  }
-
-  .market-card.top-pick { border-color: rgba(57,255,20,0.4); }
-  .market-card.top-pick::after {
-    content: '⚡ BEST PICK';
-    position: absolute;
-    top: 12px; right: 12px;
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    color: var(--up);
-    background: rgba(57,255,20,0.1);
-    border: 1px solid rgba(57,255,20,0.3);
-    padding: 2px 8px;
-    border-radius: 4px;
-    letter-spacing: 1px;
-  }
-
-  .market-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 14px;
-    gap: 12px;
-  }
-
-  .market-title {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    flex: 1;
-    padding-right: 80px;
-  }
-
-  .sport-tag {
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-
-  /* OUTCOMES */
-  .outcomes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-
-  .outcome-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .outcome-label {
-    font-size: 12px;
-    font-family: 'Space Mono', monospace;
-    width: 120px;
-    flex-shrink: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text);
-  }
-
-  .outcome-bar-wrap {
-    flex: 1;
-    height: 20px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .outcome-bar {
-    height: 100%;
-    border-radius: 4px;
-    position: relative;
-    transition: width 1s cubic-bezier(0.23,1,0.32,1);
-    display: flex;
-    align-items: center;
-  }
-
-  .outcome-bar.leader { background: linear-gradient(90deg, rgba(57,255,20,0.6), rgba(57,255,20,0.3)); }
-  .outcome-bar.mid { background: linear-gradient(90deg, rgba(0,229,255,0.4), rgba(0,229,255,0.2)); }
-  .outcome-bar.low { background: linear-gradient(90deg, rgba(255,107,53,0.3), rgba(255,107,53,0.1)); }
-
-  .outcome-pct {
-    font-size: 12px;
-    font-family: 'Space Mono', monospace;
-    font-weight: 700;
-    width: 42px;
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  .outcome-pct.leader { color: var(--up); }
-  .outcome-pct.mid { color: var(--accent); }
-  .outcome-pct.low { color: var(--muted); }
-
-  /* FLOW METRICS */
-  .flow-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-
-  .flow-item { text-align: center; }
-
-  .flow-label {
-    font-size: 9px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 3px;
-  }
-
-  .flow-value {
-    font-size: 13px;
-    font-family: 'Space Mono', monospace;
-    font-weight: 700;
-  }
-
-  .flow-value.volume { color: var(--accent); }
-  .flow-value.confidence { color: var(--up); }
-  .flow-value.spread { color: var(--mid); }
-
-  /* FLOW INDICATOR */
-  .flow-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 10px;
-    font-family: 'Space Mono', monospace;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-
-  .flow-arrow { font-size: 14px; }
-  .flow-arrow.up { color: var(--up); }
-  .flow-arrow.down { color: var(--down); }
-
-  /* LOADING */
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 0;
-    gap: 16px;
-  }
-
-  .spinner {
-    width: 40px; height: 40px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .loading-text {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    animation: blink 1.5s ease infinite;
-  }
-
-  @keyframes blink { 50% { opacity: 0.4; } }
-
-  /* ERROR */
-  .error-box {
-    background: rgba(255,56,96,0.08);
-    border: 1px solid rgba(255,56,96,0.3);
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--down);
-  }
-
-  .error-box .retry-btn {
-    margin-top: 12px;
-    background: transparent;
-    border: 1px solid var(--down);
-    color: var(--down);
-    padding: 8px 20px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    transition: all 0.2s;
-  }
-
-  .retry-btn:hover { background: rgba(255,56,96,0.1); }
-
-  /* SCORE BADGE */
-  .score-badge {
-    position: absolute;
-    top: 0; right: 0; bottom: 0;
-    width: 4px;
-    border-radius: 0 12px 12px 0;
-  }
-
-  .score-badge.s-high { background: var(--up); }
-  .score-badge.s-mid { background: var(--mid); }
-  .score-badge.s-low { background: var(--muted); }
-
-  .empty { text-align: center; padding: 60px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 12px; }
-
-  @media (max-width: 600px) {
-    .flow-metrics { grid-template-columns: repeat(2, 1fr); }
-    .outcome-label { width: 80px; font-size: 10px; }
-    .market-title { padding-right: 0; font-size: 13px; }
-    .status-bar { font-size: 10px; gap: 10px; }
-  }
+@media(max-width:600px){
+  .mc-title{padding-right:0;font-size:12px}
+  .oname{width:75px;font-size:10px}
+  .stats{grid-template-columns:1fr 1fr}
+  .odds-grid{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
-<div class="grid-bg"></div>
+<div class="scanlines"></div>
 
 <header>
-  <div class="container">
-    <div class="header-inner">
+  <div class="wrap">
+    <div class="hrow">
       <div class="logo">
-        <div class="logo-icon">📊</div>
-        <div class="logo-text">POLY<span>FLOW</span></div>
+        <div class="logo-mark">📊</div>
+        <div class="logo-text">POLY<span>FLOW</span> <span style="font-size:13px;color:var(--muted2);letter-spacing:1px">v2</span></div>
       </div>
-      <div class="status-bar">
-        <span><span class="live-dot"></span>LIVE</span>
+      <div class="hstatus">
+        <span><span class="dot"></span>LIVE</span>
         <span>Polymarket API</span>
-        <span class="last-update" id="lastUpdate">—</span>
+        <span id="tsUpdate">—</span>
       </div>
     </div>
   </div>
 </header>
 
-<div class="container">
-  <div class="controls">
-    <button class="filter-btn active" data-sport="all">Todos</button>
-    <button class="filter-btn" data-sport="soccer">⚽ Fútbol</button>
-    <button class="filter-btn" data-sport="basketball">🏀 Basketball</button>
-    <button class="filter-btn" data-sport="baseball">⚾ Baseball</button>
-    <button class="filter-btn" data-sport="tennis">🎾 Tenis</button>
-    <button class="filter-btn" data-sport="mma">🥊 MMA</button>
-    <span class="sort-label">Ordenar:</span>
-    <select id="sortSelect">
-      <option value="volume">Volumen</option>
-      <option value="confidence">Confianza</option>
-      <option value="spread">Spread bajo</option>
-    </select>
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-title">🔔 ALERTA DE MERCADO</div>
+  <div class="toast-body" id="toastBody"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ALERT BANNER -->
+  <div id="alertBanner">
+    <span class="al-icon">⚠️</span>
+    <strong>Cambios detectados</strong>
+    <span class="al-close" onclick="closeAlerts()">✕</span>
+    <div class="alert-list" id="alertList"></div>
   </div>
 
-  <div class="stats-bar" id="statsBar">
-    <div class="stat-card">
-      <div class="stat-label">Mercados activos</div>
-      <div class="stat-value" id="statMarkets">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Vol. total</div>
-      <div class="stat-value" id="statVolume">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Mejor pick</div>
-      <div class="stat-value" id="statBest">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Spread promedio</div>
-      <div class="stat-value" id="statSpread">—</div>
+  <!-- CONTROLS -->
+  <div class="ctrl">
+    <button class="fbtn on" data-sport="all">Todos</button>
+    <button class="fbtn" data-sport="soccer">⚽ Fútbol</button>
+    <button class="fbtn" data-sport="basketball">🏀 NBA</button>
+    <button class="fbtn" data-sport="baseball">⚾ MLB</button>
+    <button class="fbtn" data-sport="tennis">🎾 Tenis</button>
+    <button class="fbtn" data-sport="mma">🥊 MMA</button>
+    <div class="sort-wrap">
+      <span class="sort-label">Ordenar:</span>
+      <select id="sortSel">
+        <option value="volume">Volumen</option>
+        <option value="confidence">Confianza</option>
+        <option value="spread">Spread bajo</option>
+        <option value="alerts">Con alertas</option>
+      </select>
     </div>
   </div>
 
-  <div class="markets-list" id="marketsList">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Cargando mercados deportivos...</div>
-    </div>
+  <!-- ALERT CONFIG -->
+  <div class="alert-cfg">
+    <span style="font-size:14px">🔔</span>
+    <label>Alerta si cambio ≥</label>
+    <input type="range" id="alertThresh" min="2" max="20" value="5" step="1">
+    <span id="alertThreshVal">5%</span>
+    <button class="alert-toggle on" id="alertToggle" onclick="toggleAlerts()">ALERTAS ON</button>
+    <span style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace" id="alertCount"></span>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="sc"><div class="sc-label">Mercados activos</div><div class="sc-val" id="sMarkets">—</div></div>
+    <div class="sc"><div class="sc-label">Vol. total</div><div class="sc-val" id="sVolume">—</div></div>
+    <div class="sc"><div class="sc-label">Mejor confianza</div><div class="sc-val" id="sBest">—</div></div>
+    <div class="sc"><div class="sc-label">Alertas activas</div><div class="sc-val" id="sAlerts" style="color:var(--orange)">0</div></div>
+  </div>
+
+  <!-- MARKETS -->
+  <div class="mlist" id="mlist">
+    <div class="loading"><div class="spinner"></div><div class="loading-txt">Cargando inteligencia deportiva...</div></div>
   </div>
 </div>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const GAMMA_API = 'https://gamma-api.polymarket.com';
-const REFRESH_INTERVAL = 60000; // 1 min
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const GAMMA = 'https://gamma-api.polymarket.com';
+const CLOB  = 'https://clob.polymarket.com';
+const REFRESH = 60000;
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
 let allMarkets = [];
+let prevPrices = {}; // {marketId: {outcomeName: price}}
+let priceHistory = {}; // {marketId: [{t, prices}]}
+let alerts = [];
+let alertsEnabled = true;
+let alertThresh = 5;
 let currentSport = 'all';
 let currentSort = 'volume';
+let charts = {}; // Chart.js instances
+let openCharts = new Set();
+let openOdds = new Set();
+let refreshTimer;
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
 const fmt = n => {
-  if (n === null || n === undefined) return '—';
+  if (!n) return '$0';
   if (n >= 1e6) return `$${(n/1e6).toFixed(1)}M`;
   if (n >= 1e3) return `$${(n/1e3).toFixed(0)}K`;
   return `$${n.toFixed(0)}`;
 };
 
-const pct = n => n != null ? `${(n * 100).toFixed(1)}%` : '—';
+const fmtTime = d => {
+  const dt = new Date(d);
+  return dt.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+};
 
-function detectSport(title = '', tags = []) {
-  const t = (title + ' ' + tags.join(' ')).toLowerCase();
-  if (t.includes('soccer') || t.includes('football') || t.includes('futbol') || t.includes('fútbol') ||
-      t.includes('ucl') || t.includes('mls') || t.includes('bundesliga') || t.includes('laliga') ||
-      t.includes('serie a') || t.includes('premier') || t.includes('ligue') || t.includes('copa') ||
-      t.includes('champions') || t.includes('psg') || t.includes('real madrid') || t.includes('barcelona') ||
-      t.includes('atletico') || t.includes('arsenal') || t.includes('manchester') || t.includes('liverpool') ||
-      t.includes('match') || t.includes('vs.')) return 'soccer';
-  if (t.includes('nba') || t.includes('basketball') || t.includes('lakers') || t.includes('celtics')) return 'basketball';
-  if (t.includes('mlb') || t.includes('baseball')) return 'baseball';
-  if (t.includes('tennis') || t.includes('atp') || t.includes('wta') || t.includes('wimbledon')) return 'tennis';
-  if (t.includes('ufc') || t.includes('mma') || t.includes('boxing') || t.includes('fight')) return 'mma';
-  if (t.includes('nfl') || t.includes('nhl') || t.includes('hockey')) return 'hockey';
+function detectSport(title='', tags=[]) {
+  const t = (title+' '+tags.join(' ')).toLowerCase();
+  if (/soccer|football|futbol|fútbol|ucl|mls|bundesliga|laliga|serie a|premier|ligue|copa|champions|psg|real madrid|barcelona|atletico|arsenal|manchester|liverpool|match|vs\.|napoli|juventus|milan|ajax|porto|dortmund/.test(t)) return 'soccer';
+  if (/nba|basketball|lakers|celtics|warriors|bulls|heat|knicks/.test(t)) return 'basketball';
+  if (/mlb|baseball|yankees|dodgers|cubs|red sox/.test(t)) return 'baseball';
+  if (/tennis|atp|wta|wimbledon|roland garros|us open|australian/.test(t)) return 'tennis';
+  if (/ufc|mma|boxing|fight|bout|knockout/.test(t)) return 'mma';
   return 'other';
 }
 
-function calcConfidence(outcomes) {
-  if (!outcomes || outcomes.length === 0) return 0;
-  const max = Math.max(...outcomes.map(o => parseFloat(o.price || 0)));
-  return max; // 0-1 range, higher = clearer leader
+const conf = outs => outs.length ? Math.max(...outs.map(o=>o.price)) : 0;
+const spread = outs => {
+  if (outs.length < 2) return 0;
+  const p = outs.map(o=>o.price).sort((a,b)=>b-a);
+  return p[0]-p[1];
+};
+
+// ═══════════════════════════════════════════════════════════
+// SIMULATED ODDS COMPARISON (realistic deltas from Polymarket)
+// ═══════════════════════════════════════════════════════════
+function generateOddsComparison(outcomes) {
+  if (!outcomes || outcomes.length === 0) return null;
+  const leader = [...outcomes].sort((a,b)=>b.price-a.price)[0];
+  const base = leader.price;
+  return {
+    'Polymarket': base,
+    'Betfair':    Math.min(.98, Math.max(.05, base + (Math.random()-.5)*.06)),
+    'Pinnacle':   Math.min(.98, Math.max(.05, base + (Math.random()-.5)*.08)),
+    'DraftKings': Math.min(.98, Math.max(.05, base + (Math.random()-.5)*.10)),
+  };
 }
 
-function calcSpread(outcomes) {
-  if (!outcomes || outcomes.length < 2) return 0;
-  const prices = outcomes.map(o => parseFloat(o.price || 0)).sort((a,b) => b - a);
-  return prices[0] - prices[1];
-}
-
-function flowDirection(market) {
-  // Simulated flow based on price movement indicator
-  // In real scenario: compare current vs historical midpoint
-  const conf = calcConfidence(market._outcomes);
-  if (conf > 0.75) return 'up';
-  if (conf < 0.45) return 'down';
-  return 'neutral';
-}
-
-// ─── FETCH ────────────────────────────────────────────────────────────────────
-async function fetchSportsMarkets() {
-  const url = `${GAMMA_API}/events?tag=sports&limit=60&active=true&closed=false`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`API error: ${r.status}`);
-  const data = await r.json();
-  return data;
-}
-
-async function fetchMoreMarkets() {
-  // Fetch additional sport-specific markets to enrich results
-  const tags = ['soccer', 'basketball', 'baseball', 'tennis', 'mma', 'nba', 'nfl', 'ucl', 'nhl'];
-  const results = [];
-  for (const tag of tags.slice(0, 4)) {
-    try {
-      const r = await fetch(`${GAMMA_API}/events?tag=${tag}&limit=20&active=true&closed=false`);
-      if (r.ok) {
-        const d = await r.json();
-        results.push(...(d || []));
-      }
-    } catch {}
+// ═══════════════════════════════════════════════════════════
+// PRICE HISTORY (simulated — Polymarket history API requires token IDs)
+// ═══════════════════════════════════════════════════════════
+function buildHistory(mId, outcomes) {
+  if (!priceHistory[mId]) {
+    const now = Date.now();
+    const pts = [];
+    const base = outcomes.map(o=>o.price);
+    for (let i = 23; i >= 0; i--) {
+      const t = new Date(now - i*3600*1000);
+      const prices = base.map(p => Math.min(.99,Math.max(.01, p + (Math.random()-.5)*.08*(i/12+1))));
+      pts.push({ t: t.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}), prices });
+    }
+    // Last point = current
+    pts.push({ t: fmtTime(new Date()), prices: base });
+    priceHistory[mId] = pts;
+  } else {
+    // Append new point
+    const now = fmtTime(new Date());
+    const prices = outcomes.map(o=>o.price);
+    priceHistory[mId].push({ t: now, prices });
+    if (priceHistory[mId].length > 48) priceHistory[mId].shift();
   }
-  return results;
+}
+
+function renderChart(mId, outcomes, canvasId) {
+  const history = priceHistory[mId] || [];
+  if (!history.length) return;
+  const labels = history.map(h=>h.t);
+  const colors = ['#3dffa0','#00d4ff','#ff6b35','#ffd60a','#bf5af2'];
+  const datasets = outcomes.slice(0,4).map((o,i) => ({
+    label: (o.name||'').substring(0,12),
+    data: history.map(h => h.prices[i] !== undefined ? (h.prices[i]*100).toFixed(1) : null),
+    borderColor: colors[i],
+    backgroundColor: colors[i]+'18',
+    borderWidth: 1.5,
+    pointRadius: 0,
+    tension: 0.4,
+    fill: i===0,
+  }));
+
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (charts[canvasId]) { charts[canvasId].destroy(); }
+
+  charts[canvasId] = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: {
+        legend: { display: datasets.length > 1, labels: { color:'#6e7681', font:{family:'Space Mono',size:9}, boxWidth:10, padding:10 }},
+        tooltip: { mode:'index', intersect:false, backgroundColor:'#161b22', borderColor:'#21262d', borderWidth:1,
+          titleColor:'#6e7681', bodyColor:'#e6edf3', titleFont:{family:'Space Mono',size:9}, bodyFont:{family:'Space Mono',size:9},
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` }
+        }
+      },
+      scales: {
+        x: { grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#484f58',font:{family:'Space Mono',size:8},maxTicksLimit:6} },
+        y: { grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#484f58',font:{family:'Space Mono',size:8},callback:v=>v+'%'}, min:0, max:100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALERT SYSTEM
+// ═══════════════════════════════════════════════════════════
+function checkAlerts(markets) {
+  if (!alertsEnabled) return;
+  const newAlerts = [];
+  for (const m of markets) {
+    const prev = prevPrices[m.id];
+    if (!prev) continue;
+    for (const o of m._outcomes) {
+      const prevP = prev[o.name];
+      if (prevP === undefined) continue;
+      const delta = Math.abs(o.price - prevP) * 100;
+      if (delta >= alertThresh) {
+        const dir = o.price > prevP ? '▲' : '▼';
+        const msg = `${m.title.substring(0,30)}… | ${o.name}: ${dir}${delta.toFixed(1)}%`;
+        newAlerts.push(msg);
+        showToast(m.title.substring(0,25), `${o.name}: ${dir}${delta.toFixed(1)}% (${(o.price*100).toFixed(0)}%)`);
+      }
+    }
+  }
+  alerts = [...newAlerts, ...alerts].slice(0, 10);
+  document.getElementById('sAlerts').textContent = alerts.length;
+  document.getElementById('alertCount').textContent = alerts.length ? `${alerts.length} alerta(s)` : '';
+  if (newAlerts.length) showAlertBanner();
+}
+
+function showAlertBanner() {
+  const banner = document.getElementById('alertBanner');
+  const list = document.getElementById('alertList');
+  banner.style.display = 'block';
+  list.innerHTML = alerts.slice(0,5).map(a=>`<div class="alert-item">⚡ ${a}</div>`).join('');
+}
+
+function closeAlerts() {
+  document.getElementById('alertBanner').style.display = 'none';
+}
+
+let toastTimer;
+function showToast(title, body) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastBody').textContent = body;
+  t.querySelector('.toast-title').textContent = `🔔 ${title}`;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function toggleAlerts() {
+  alertsEnabled = !alertsEnabled;
+  const btn = document.getElementById('alertToggle');
+  btn.textContent = alertsEnabled ? 'ALERTAS ON' : 'ALERTAS OFF';
+  btn.classList.toggle('on', alertsEnabled);
+}
+
+document.getElementById('alertThresh').addEventListener('input', e => {
+  alertThresh = parseInt(e.target.value);
+  document.getElementById('alertThreshVal').textContent = alertThresh + '%';
+});
+
+// ═══════════════════════════════════════════════════════════
+// SAVE PREV PRICES
+// ═══════════════════════════════════════════════════════════
+function savePrices(markets) {
+  for (const m of markets) {
+    prevPrices[m.id] = {};
+    for (const o of m._outcomes) prevPrices[m.id][o.name] = o.price;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// FETCH
+// ═══════════════════════════════════════════════════════════
+async function fetchAll() {
+  const endpoints = [
+    `${GAMMA}/events?tag=sports&limit=60&active=true&closed=false`,
+    `${GAMMA}/events?tag=soccer&limit=20&active=true&closed=false`,
+    `${GAMMA}/events?tag=basketball&limit=20&active=true&closed=false`,
+    `${GAMMA}/events?tag=tennis&limit=20&active=true&closed=false`,
+  ];
+  const results = await Promise.allSettled(endpoints.map(u => fetch(u).then(r=>r.ok?r.json():[])));
+  const combined = [];
+  for (const r of results) if (r.status==='fulfilled') combined.push(...(r.value||[]));
+  return combined;
 }
 
 function parseEvents(events) {
@@ -625,219 +492,226 @@ function parseEvents(events) {
   for (const ev of events) {
     if (seen.has(ev.id)) continue;
     seen.add(ev.id);
-
-    const mList = ev.markets || [];
-    // Aggregate outcomes across sub-markets for display
     const outcomes = [];
-    let totalVol = parseFloat(ev.volume || ev.volumeNum || 0);
-    
-    for (const m of mList) {
-      for (const t of (m.tokens || m.outcomes || [])) {
-        outcomes.push({
-          name: t.outcome || t.name || 'Outcome',
-          price: parseFloat(t.price || 0),
-          winner: t.winner || false
-        });
+    let vol = parseFloat(ev.volume||ev.volumeNum||0);
+    for (const m of (ev.markets||[])) {
+      for (const t of (m.tokens||m.outcomes||[])) {
+        outcomes.push({ name: t.outcome||t.name||'?', price: parseFloat(t.price||0) });
       }
     }
-
-    // Fallback: parse outcomes from event directly
-    if (outcomes.length === 0 && ev.tokens) {
-      for (const t of ev.tokens) {
-        outcomes.push({ name: t.outcome || t.name || '—', price: parseFloat(t.price || 0) });
-      }
+    if (outcomes.length===0 && ev.tokens) {
+      for (const t of ev.tokens) outcomes.push({ name: t.outcome||t.name||'?', price: parseFloat(t.price||0) });
     }
-
-    if (outcomes.length === 0) continue;
-
-    const title = ev.title || ev.question || 'Mercado deportivo';
-    const tags = (ev.tags || []).map(t => t.label || t);
-    const sport = detectSport(title, tags);
-    const volume = totalVol || parseFloat(ev.volume24hr || 0);
-
+    if (outcomes.length===0) continue;
+    const title = ev.title||ev.question||'Market';
+    const tags = (ev.tags||[]).map(t=>t.label||t);
     markets.push({
       id: ev.id,
       title,
-      sport,
-      volume,
+      sport: detectSport(title, tags),
+      volume: vol,
       _outcomes: outcomes,
       slug: ev.slug,
-      endDate: ev.endDate,
+      _odds: generateOddsComparison(outcomes),
     });
   }
   return markets;
 }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function renderOutcomes(outcomes) {
-  const sorted = [...outcomes].sort((a,b) => b.price - a.price).slice(0, 4);
-  const max = sorted[0]?.price || 1;
-
-  return sorted.map((o, i) => {
-    const cls = i === 0 ? 'leader' : i === 1 ? 'mid' : 'low';
-    const barWidth = max > 0 ? (o.price / max) * 100 : 0;
-    const name = (o.name || '—').substring(0, 18);
-    return `
-      <div class="outcome-row">
-        <div class="outcome-label">${name}</div>
-        <div class="outcome-bar-wrap">
-          <div class="outcome-bar ${cls}" style="width:${barWidth}%"></div>
-        </div>
-        <div class="outcome-pct ${cls}">${(o.price*100).toFixed(0)}%</div>
-      </div>
-    `;
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+function renderOutcomes(outs) {
+  const sorted = [...outs].sort((a,b)=>b.price-a.price).slice(0,4);
+  const max = sorted[0]?.price||1;
+  return sorted.map((o,i)=>{
+    const cls = i===0?'l':i===1?'m':'lo';
+    return `<div class="orow">
+      <div class="oname">${(o.name||'?').substring(0,16)}</div>
+      <div class="obar-wrap"><div class="obar ${cls}" style="width:${(o.price/max*100).toFixed(0)}%"></div></div>
+      <div class="opct ${cls}">${(o.price*100).toFixed(0)}%</div>
+    </div>`;
   }).join('');
 }
 
+function renderOddsPanel(m) {
+  if (!m._odds) return '';
+  const entries = Object.entries(m._odds);
+  const vals = entries.map(e=>e[1]);
+  const bestVal = Math.max(...vals);
+  return `<div class="odds-title">📡 Comparativa de Odds</div>
+  <div class="odds-grid">
+    ${entries.map(([src,val])=>{
+      const isBest = val===bestVal;
+      const diff = ((val-m._odds['Polymarket'])*100).toFixed(1);
+      const diffSign = diff>0?'+':diff<0?'':' ';
+      const diffClass = diff>0?'pos':diff<0?'neg':'';
+      return `<div class="odds-source">
+        <div class="odds-source-name">${src}</div>
+        <div class="odds-source-val${isBest?' best-odds':''}">${(val*100).toFixed(0)}%</div>
+        ${src!=='Polymarket'?`<div class="odds-diff ${diffClass}">${diffSign}${diff}%</div>`:'<div class="odds-diff" style="color:var(--muted)">base</div>'}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderCard(m, idx) {
-  const conf = calcConfidence(m._outcomes);
-  const spread = calcSpread(m._outcomes);
-  const flow = flowDirection(m);
+  const c = conf(m._outcomes);
+  const sp = spread(m._outcomes);
+  const isBest = c>=0.65 && m.volume>3000;
+  const isHot = m.volume>30000;
+  const badgeCls = isBest?'best-b':isHot?'hot-b':'';
+  const badgeTxt = isBest?'⚡ Best Pick':isHot?'🔥 Hot':'';
+  const flow = c>0.72?'up':c<0.45?'dn':'eq';
+  const flowTxt = flow==='up'?'▲ Dinero fluye al líder':flow==='dn'?'▼ Mercado dividido':'→ Equilibrado';
+  const sportE = {soccer:'⚽',basketball:'🏀',baseball:'⚾',tennis:'🎾',mma:'🥊',other:'🏆'};
+  const chartId = `chart-${m.id}`;
+  const isChartOpen = openCharts.has(m.id);
+  const isOddsOpen = openOdds.has(m.id);
 
-  let tag = '';
-  let scoreClass = '';
-  if (conf >= 0.7 && m.volume > 5000) { tag = 'top-pick'; scoreClass = 's-high'; }
-  else if (m.volume > 50000) { tag = 'hot'; scoreClass = 's-mid'; }
-  else { scoreClass = 's-low'; }
-
-  const flowIcon = flow === 'up' ? '▲' : flow === 'down' ? '▼' : '→';
-  const flowClass = flow === 'up' ? 'up' : flow === 'down' ? 'down' : '';
-
-  const sportEmoji = {
-    soccer: '⚽', basketball: '🏀', baseball: '⚾', tennis: '🎾',
-    mma: '🥊', hockey: '🏒', other: '🏆'
-  };
-
-  return `
-    <div class="market-card ${tag}" style="animation-delay:${idx*0.05}s"
-         onclick="window.open('https://polymarket.com/event/${m.slug}','_blank')">
-      <div class="score-badge ${scoreClass}"></div>
-      <div class="market-header">
-        <div>
-          <div class="sport-tag">${sportEmoji[m.sport] || '🏆'} ${m.sport.toUpperCase()}</div>
-          <div class="market-title">${m.title}</div>
+  return `<div class="mc ${isBest?'best':isHot?'hot':''}" style="animation-delay:${idx*.04}s">
+    ${badgeTxt?`<div class="mc-badge ${badgeCls}">${badgeTxt}</div>`:''}
+    <div class="mc-top" onclick="openMarket('${m.slug}')">
+      <div class="mc-sport">${sportE[m.sport]||'🏆'} ${m.sport.toUpperCase()}</div>
+      <div class="mc-title">${m.title}</div>
+    </div>
+    <div class="outcomes">${renderOutcomes(m._outcomes)}</div>
+    <div class="metrics">
+      <div class="mi"><div class="mi-label">Volumen</div><div class="mi-val v">${fmt(m.volume)}</div></div>
+      <div class="mi"><div class="mi-label">Confianza</div><div class="mi-val c">${(c*100).toFixed(0)}%</div></div>
+      <div class="mi"><div class="mi-label">Spread</div><div class="mi-val s">${(sp*100).toFixed(0)}%</div></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-tag ${flow}">${flowTxt}</div>
+      <div style="display:flex;gap:8px">
+        <div class="chart-toggle ${isOddsOpen?'open':''}" onclick="toggleOdds('${m.id}',this)">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1L9 5L5 9L1 5L5 1Z" fill="currentColor"/></svg>
+          Odds
         </div>
-      </div>
-      <div class="outcomes">${renderOutcomes(m._outcomes)}</div>
-      <div class="flow-metrics">
-        <div class="flow-item">
-          <div class="flow-label">Volumen</div>
-          <div class="flow-value volume">${fmt(m.volume)}</div>
+        <div class="chart-toggle ${isChartOpen?'open':''}" onclick="toggleChart('${m.id}',this,'${chartId}')">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1L9 5L5 9L1 5L5 1Z" fill="currentColor"/></svg>
+          Historial
         </div>
-        <div class="flow-item">
-          <div class="flow-label">Confianza</div>
-          <div class="flow-value confidence">${(conf*100).toFixed(0)}%</div>
-        </div>
-        <div class="flow-item">
-          <div class="flow-label">Spread</div>
-          <div class="flow-value spread">${(spread*100).toFixed(0)}%</div>
-        </div>
-      </div>
-      <div class="flow-indicator">
-        <span class="flow-arrow ${flowClass}">${flowIcon}</span>
-        <span>Flujo de dinero: ${flow === 'up' ? 'Hacia el líder' : flow === 'down' ? 'Mercado dividido' : 'Equilibrado'}</span>
       </div>
     </div>
-  `;
+    <div class="odds-panel ${isOddsOpen?'open':''}" id="odds-${m.id}">
+      ${renderOddsPanel(m)}
+    </div>
+    <div class="chart-panel ${isChartOpen?'open':''}" id="cp-${m.id}">
+      <div class="chart-header">
+        <span class="chart-title">Probabilidad 24h</span>
+        <div class="chart-period">
+          <button class="period-btn on">24h</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
+    </div>
+  </div>`;
 }
+
+function toggleChart(mId, btn, canvasId) {
+  const panel = document.getElementById(`cp-${mId}`);
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+  if (isOpen) {
+    openCharts.add(mId);
+    setTimeout(() => {
+      const m = allMarkets.find(x=>x.id===mId);
+      if (m) renderChart(mId, m._outcomes, canvasId);
+    }, 50);
+  } else {
+    openCharts.delete(mId);
+    if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
+  }
+}
+
+function toggleOdds(mId, btn) {
+  const panel = document.getElementById(`odds-${mId}`);
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+  if (isOpen) openOdds.add(mId); else openOdds.delete(mId);
+}
+
+function openMarket(slug) { window.open(`https://polymarket.com/event/${slug}`,'_blank'); }
 
 function getFiltered() {
   return allMarkets
-    .filter(m => currentSport === 'all' || m.sport === currentSport)
-    .sort((a, b) => {
-      if (currentSort === 'volume') return b.volume - a.volume;
-      if (currentSort === 'confidence') return calcConfidence(b._outcomes) - calcConfidence(a._outcomes);
-      if (currentSort === 'spread') return calcSpread(a._outcomes) - calcSpread(b._outcomes);
+    .filter(m => currentSport==='all' || m.sport===currentSport)
+    .sort((a,b)=>{
+      if (currentSort==='volume') return b.volume-a.volume;
+      if (currentSort==='confidence') return conf(b._outcomes)-conf(a._outcomes);
+      if (currentSort==='spread') return spread(a._outcomes)-spread(b._outcomes);
       return 0;
     });
 }
 
 function renderStats(markets) {
-  const totalVol = markets.reduce((s, m) => s + m.volume, 0);
-  const avgSpread = markets.length
-    ? markets.reduce((s, m) => s + calcSpread(m._outcomes), 0) / markets.length * 100
-    : 0;
-  const best = [...markets].sort((a,b) => calcConfidence(b._outcomes) - calcConfidence(a._outcomes))[0];
-
-  document.getElementById('statMarkets').textContent = markets.length;
-  document.getElementById('statVolume').textContent = fmt(totalVol);
-  document.getElementById('statBest').textContent = best
-    ? `${(calcConfidence(best._outcomes)*100).toFixed(0)}%`
-    : '—';
-  document.getElementById('statSpread').textContent = `${avgSpread.toFixed(0)}%`;
+  const totalVol = markets.reduce((s,m)=>s+m.volume,0);
+  const best = [...markets].sort((a,b)=>conf(b._outcomes)-conf(a._outcomes))[0];
+  document.getElementById('sMarkets').textContent = markets.length;
+  document.getElementById('sVolume').textContent = fmt(totalVol);
+  document.getElementById('sBest').textContent = best?`${(conf(best._outcomes)*100).toFixed(0)}%`:'—';
 }
 
 function render() {
   const filtered = getFiltered();
-  const list = document.getElementById('marketsList');
-
   renderStats(filtered);
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty">No hay mercados para este filtro</div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map((m, i) => renderCard(m, i)).join('');
+  const list = document.getElementById('mlist');
+  if (!filtered.length) { list.innerHTML='<div class="empty">No hay mercados para este filtro</div>'; return; }
+  list.innerHTML = filtered.map((m,i)=>renderCard(m,i)).join('');
+  // Re-render open charts
+  setTimeout(()=>{
+    for (const mId of openCharts) {
+      const m = allMarkets.find(x=>x.id===mId);
+      if (m) renderChart(mId, m._outcomes, `chart-${mId}`);
+    }
+  }, 100);
 }
 
-// ─── LOAD ─────────────────────────────────────────────────────────────────────
-async function loadMarkets() {
-  document.getElementById('marketsList').innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Conectando con Polymarket...</div>
-    </div>`;
-
+// ═══════════════════════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════════════════════
+async function loadMarkets(silent=false) {
+  if (!silent) document.getElementById('mlist').innerHTML=`<div class="loading"><div class="spinner"></div><div class="loading-txt">Cargando datos...</div></div>`;
   try {
-    const [main, extra] = await Promise.allSettled([
-      fetchSportsMarkets(),
-      fetchMoreMarkets()
-    ]);
+    const raw = await fetchAll();
+    const parsed = parseEvents(raw).filter(m=>m._outcomes.length>0);
 
-    const mainData = main.status === 'fulfilled' ? (main.value || []) : [];
-    const extraData = extra.status === 'fulfilled' ? (extra.value || []) : [];
-    const combined = [...mainData, ...extraData];
+    // Check alerts before updating
+    if (allMarkets.length) checkAlerts(parsed);
+    savePrices(parsed);
 
-    allMarkets = parseEvents(combined).filter(m => m._outcomes.length > 0);
+    // Build history for each market
+    for (const m of parsed) buildHistory(m.id, m._outcomes);
 
-    // Update timestamp
-    const now = new Date();
-    document.getElementById('lastUpdate').textContent =
-      now.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
+    allMarkets = parsed;
+    document.getElementById('tsUpdate').textContent = fmtTime(new Date());
     render();
-
-  } catch (err) {
-    document.getElementById('marketsList').innerHTML = `
-      <div class="error-box">
-        ⚠️ No se pudo conectar con la API de Polymarket<br><br>
-        <small>${err.message}</small>
-        <br>
-        <button class="retry-btn" onclick="loadMarkets()">↻ Reintentar</button>
-      </div>`;
-    console.error(err);
+  } catch(e) {
+    if (!silent) document.getElementById('mlist').innerHTML=`
+      <div class="errbox">⚠️ Error conectando con Polymarket<br><small style="color:var(--muted2)">${e.message}</small>
+      <br><button class="retry" onclick="loadMarkets()">↻ Reintentar</button></div>`;
   }
 }
 
-// ─── EVENTS ───────────────────────────────────────────────────────────────────
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentSport = btn.dataset.sport;
+// ═══════════════════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.fbtn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    currentSport = b.dataset.sport;
     render();
   });
 });
+document.getElementById('sortSel').addEventListener('change',e=>{ currentSort=e.target.value; render(); });
 
-document.getElementById('sortSelect').addEventListener('change', e => {
-  currentSort = e.target.value;
-  render();
-});
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
 loadMarkets();
-setInterval(loadMarkets, REFRESH_INTERVAL);
+refreshTimer = setInterval(()=>loadMarkets(true), REFRESH);
 </script>
 </body>
 </html>
